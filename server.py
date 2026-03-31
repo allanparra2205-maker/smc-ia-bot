@@ -2,7 +2,7 @@
 SMC Gold IA Server — Gemini Edition
 ─────────────────────────────────────
 Recibe webhooks de TradingView con datos SMC del oro.
-Consulta Gemini 2.0 Flash (100% gratis) para análisis.
+Consulta Gemini 2.5 Flash (100% gratis) para análisis.
 Resultados visibles en logs de Railway en tiempo real.
 
 Deploy gratis: Railway.app
