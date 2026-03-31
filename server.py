@@ -156,7 +156,7 @@ def analyze(data: dict) -> dict:
         start = raw.find("{")
         end   = raw.rfind("}") + 1
         if start == -1 or end == 0:
-            raise ValueError(f"No JSON encontrado: {raw[:200]}")
+            return json.loads(raw[start:end+1])
         return json.loads(raw[start:end])
     
 
