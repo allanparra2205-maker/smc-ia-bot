@@ -150,7 +150,7 @@ def analyze(data: dict) -> dict:
         if part.get("text"):
             raw += part["text"]
 
-    raw = raw.strip()
+raw = raw.strip()
 raw = raw.replace("```json", "").replace("```", "").strip()
 
 # Extraer solo el JSON ignorando texto de pensamiento
