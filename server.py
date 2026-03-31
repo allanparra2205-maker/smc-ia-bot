@@ -130,24 +130,29 @@ Evalúa y responde en JSON.
 """
 
 def analyze(data: dict) -> dict:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key={GEMINI_API_KEY}"
 
     payload = {
         "system_instruction": {"parts": [{"text": SMC_SYSTEM_PROMPT}]},
         "contents": [{"parts": [{"text": build_prompt(data)}]}],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 600}
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 600,
+            "responseMimeType": "application/json"
+        }
     }
 
-    resp = requests.post(url, json=payload, timeout=20)
+    resp = requests.post(url, json=payload, timeout=30)
     resp.raise_for_status()
 
     raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-    # Limpiar posibles backticks
-    if "```" in raw:
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    return json.loads(raw.strip())
+
+    raw = raw.replace("```json", "").replace("```", "").strip()
+    if raw.startswith("json"):
+        raw = raw[4:].strip()
+
+    return json.loads(raw)
+    
 
 def print_result(data: dict, result: dict):
     """Log visual claro en Railway."""
