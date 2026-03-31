@@ -220,7 +220,7 @@ def receive_signal():
 def health():
     return jsonify({
         "status":   "✅ corriendo",
-        "modelo":   "gemini-2.0-flash (gratis)",
+        "modelo":   "gemini-2.5-flash (gratis)",
         "gemini":   "configurado" if GEMINI_API_KEY else "❌ FALTA GEMINI_API_KEY",
         "hora_utc": datetime.utcnow().strftime("%H:%M:%S")
     })
