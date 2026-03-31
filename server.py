@@ -137,21 +137,27 @@ def analyze(data: dict) -> dict:
         "contents": [{"parts": [{"text": build_prompt(data)}]}],
         "generationConfig": {
             "temperature": 0.2,
-            "maxOutputTokens": 600,
-            "responseMimeType": "application/json"
+            "maxOutputTokens": 800
         }
     }
 
     resp = requests.post(url, json=payload, timeout=30)
     resp.raise_for_status()
 
-    raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    candidates = resp.json()["candidates"]
+    raw = ""
+    for part in candidates[0]["content"]["parts"]:
+        if part.get("text"):
+            raw += part["text"]
 
-    raw = raw.replace("```json", "").replace("```", "").strip()
-    if raw.startswith("json"):
-        raw = raw[4:].strip()
-
-    return json.loads(raw)
+    raw = raw.strip()
+    # Extraer solo el JSON ignorando texto de pensamiento
+    start = raw.find("{")
+    end   = raw.rfind("}") + 1
+    if start == -1 or end == 0:
+        raise ValueError(f"No JSON encontrado: {raw[:200]}")
+    
+    return json.loads(raw[start:end])
     
 
 def print_result(data: dict, result: dict):
