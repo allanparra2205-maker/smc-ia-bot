@@ -152,12 +152,15 @@ def analyze(data: dict) -> dict:
 
     raw = raw.strip()
 raw = raw.replace("```json", "").replace("```", "").strip()
-        # Extraer solo el JSON ignorando texto de pensamiento
-        start = raw.find("{")
-        end   = raw.rfind("}") + 1
-        if start == -1 or end == 0:
-            return json.loads(raw[start:end+1])
-        return json.loads(raw[start:end])
+
+# Extraer solo el JSON ignorando texto de pensamiento
+start = raw.find("{")
+end = raw.rfind("}") + 1
+
+if start == -1 or end == 0:
+    raise ValueError("No JSON válido")
+
+return json.loads(raw[start:end])
     
 
 def print_result(data: dict, result: dict):
