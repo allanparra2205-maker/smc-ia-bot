@@ -151,14 +151,13 @@ def analyze(data: dict) -> dict:
             raw += part["text"]
 
     raw = raw.strip()
-    raw = raw.replace("```json", "").replace("```", "").strip()
-    # Extraer solo el JSON ignorando texto de pensamiento
-    start = raw.find("{")
-    end   = raw.rfind("}") + 1
-    if start == -1 or end == 0:
-    raise ValueError(f"No JSON encontrado: {raw[:200]}")
-
-    return json.loads(raw[start:end])
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        # Extraer solo el JSON ignorando texto de pensamiento
+        start = raw.find("{")
+        end   = raw.rfind("}") + 1
+        if start == -1 or end == 0:
+            raise ValueError(f"No JSON encontrado: {raw[:200]}")
+        return json.loads(raw[start:end])
     
 
 def print_result(data: dict, result: dict):
