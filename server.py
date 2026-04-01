@@ -147,16 +147,15 @@ def analyze(data: dict) -> dict:
         if part.get("text"):
             raw += part["text"]
 
-    raw = raw.strip()
+        raw = raw.strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
 
     # Extraer solo el JSON ignorando texto de pensamiento
-    start = raw.find("{")
-    end   = raw.rfind("}") + 1
-    if start == -1 or end == 0:
+    match = re.search(r'\{.*\}', raw, re.DOTALL)
+    if not match:
         raise ValueError(f"No JSON encontrado: {raw[:200]}")
 
-    return json.loads(raw[start:end])
+    return json.loads(match.group(0))
 
 def print_result(data: dict, result: dict):
     """Log visual claro en Render."""
