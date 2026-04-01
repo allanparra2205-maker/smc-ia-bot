@@ -8,6 +8,7 @@ Resultados visibles en logs de Render en tiempo real.
 
 import os
 import json
+import re
 import requests
 from flask import Flask, request, jsonify
 from datetime import datetime
