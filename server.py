@@ -168,7 +168,24 @@ try:
     return json.loads(json_str)
 except Exception as e:
     raise ValueError(f"JSON corrupto: {json_str[:200]}")
+
+
+
 def print_result(data: dict, result: dict):
+    """Log visual claro en Render."""
+    
+    tipo = data.get("tipo", "?")
+    precio = data.get("precio", 0)
+    decision = result.get("decision", "?")
+    puntuacion = result.get("puntuacion", "?")
+    confianza = result.get("confianza", "?")
+
+    print("\n📊 RESULTADO IA SMC")
+    print(f"Tipo: {tipo}")
+    print(f"Precio: {precio}")
+    print(f"Decisión: {decision}")
+    print(f"Puntuación: {puntuacion}")
+    print(f"Confianza: {confianza}")
     """Log visual claro en Render."""
     tipo       = data.get("tipo", "?")
     precio     = data.get("precio", 0)
