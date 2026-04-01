@@ -145,11 +145,12 @@ def analyze(data: dict) -> dict:
     candidates = resp.json()["candidates"]
     raw = ""
     for part in candidates[0]["content"]["parts"]:
-        if part.get("text"):
-            raw += part["text"]
+    if part.get("text"):
+        raw += part["text"]
 
-        raw = raw.strip()
-    raw = raw.replace("```json", "").replace("```", "").strip()
+# 👇 FUERA del for (importante)
+raw = raw.strip()
+raw = raw.replace("```json", "").replace("```", "").strip()
 
     # Extraer solo el JSON ignorando texto de pensamiento
     start = raw.find("{")
