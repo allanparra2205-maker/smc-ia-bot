@@ -3,10 +3,7 @@ SMC Gold IA Server — Gemini Edition
 ─────────────────────────────────────
 Recibe webhooks de TradingView con datos SMC del oro.
 Consulta Gemini 2.5 Flash (100% gratis) para análisis.
-Resultados visibles en logs de Railway en tiempo real.
-
-Deploy gratis: Railway.app
-IA gratis: aistudio.google.com
+Resultados visibles en logs de Render en tiempo real.
 """
 
 import os
@@ -18,7 +15,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # ─── CONFIG ──────────────────────────────────────────────────
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")  # aistudio.google.com → Get API Key
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # ─── PROMPT SMC ──────────────────────────────────────────────
 SMC_SYSTEM_PROMPT = """
@@ -150,33 +147,31 @@ def analyze(data: dict) -> dict:
         if part.get("text"):
             raw += part["text"]
 
-raw = raw.strip()
-raw = raw.replace("```json", "").replace("```", "").strip()
+    raw = raw.strip()
+    raw = raw.replace("```json", "").replace("```", "").strip()
 
-# Extraer solo el JSON ignorando texto de pensamiento
-start = raw.find("{")
-end = raw.rfind("}") + 1
+    # Extraer solo el JSON ignorando texto de pensamiento
+    start = raw.find("{")
+    end   = raw.rfind("}") + 1
+    if start == -1 or end == 0:
+        raise ValueError(f"No JSON encontrado: {raw[:200]}")
 
-if start == -1 or end == 0:
-    raise ValueError("No JSON válido")
-
-return json.loads(raw[start:end])
-    
+    return json.loads(raw[start:end])
 
 def print_result(data: dict, result: dict):
-    """Log visual claro en Railway."""
-    tipo      = data.get("tipo", "?")
-    precio    = data.get("precio", 0)
-    decision  = result.get("decision", "?")
+    """Log visual claro en Render."""
+    tipo       = data.get("tipo", "?")
+    precio     = data.get("precio", 0)
+    decision   = result.get("decision", "?")
     puntuacion = result.get("puntuacion", 0)
-    confianza = result.get("confianza", "?")
-    analisis  = result.get("analisis", "")
-    cf        = result.get("confluencias", [])
-    sl        = result.get("sl_ajustado", 0)
-    tp1       = result.get("tp1", 0)
-    tp2       = result.get("tp2", 0)
-    zona      = result.get("zona_precio", "?")
-    adv       = result.get("advertencias", "")
+    confianza  = result.get("confianza", "?")
+    analisis   = result.get("analisis", "")
+    cf         = result.get("confluencias", [])
+    sl         = result.get("sl_ajustado", 0)
+    tp1        = result.get("tp1", 0)
+    tp2        = result.get("tp2", 0)
+    zona       = result.get("zona_precio", "?")
+    adv        = result.get("advertencias", "")
 
     emoji = "🔴" if tipo == "SELL" else "🟢"
     dec_e = "✅" if decision == "EJECUTAR" else "⏳" if decision == "ESPERAR" else "❌"
@@ -234,7 +229,7 @@ def receive_signal():
 def health():
     return jsonify({
         "status":   "✅ corriendo",
-        "modelo":   "gemini-2.5-flash (gratis)",
+        "modelo":   "gemini-2.5-flash",
         "gemini":   "configurado" if GEMINI_API_KEY else "❌ FALTA GEMINI_API_KEY",
         "hora_utc": datetime.utcnow().strftime("%H:%M:%S")
     })
