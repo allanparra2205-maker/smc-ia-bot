@@ -153,21 +153,20 @@ def analyze(data: dict) -> dict:
 
     # Extraer solo el JSON ignorando texto de pensamiento
     start = raw.find("{")
-end = raw.rfind("}") + 1
 
-if start != -1 and end != 0:
-    try:
-        return json.loads(raw[start:end])
-    except:
-        pass
+if start == -1:
+    raise ValueError(f"No JSON encontrado: {raw[:200]}")
 
-# fallback con regex por si acaso
-match = re.search(r'\{.*?\}', raw, re.DOTALL)
-if match:
-    return json.loads(match.group(0))
+json_str = raw[start:]
 
-raise ValueError(f"No JSON válido: {raw[:300]}")
+# 🔥 Si no cierra, lo cerramos manualmente
+if not json_str.strip().endswith("}"):
+    json_str += "}"
 
+try:
+    return json.loads(json_str)
+except Exception as e:
+    raise ValueError(f"JSON corrupto: {json_str[:200]}")
 def print_result(data: dict, result: dict):
     """Log visual claro en Render."""
     tipo       = data.get("tipo", "?")
