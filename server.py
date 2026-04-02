@@ -115,7 +115,7 @@ def analyze(data: dict) -> dict:
     payload = {
         "system_instruction": {"parts": [{"text": SMC_SYSTEM_PROMPT}]},
         "contents": [{"parts": [{"text": build_prompt(data)}]}],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800}
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048}
     }
     resp = requests.post(url, json=payload, timeout=30)
     resp.raise_for_status()
