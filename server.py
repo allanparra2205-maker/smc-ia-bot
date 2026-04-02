@@ -1,24 +1,19 @@
 """
 SMC Gold IA Server — Gemini Edition
-─────────────────────────────────────
 Recibe webhooks de TradingView con datos SMC del oro.
-Consulta Gemini 2.5 Flash (100% gratis) para análisis.
-Resultados visibles en logs de Render en tiempo real.
+Consulta Gemini 2.5 Flash para análisis con IA.
 """
 
 import os
 import json
-import re
 import requests
 from flask import Flask, request, jsonify
 from datetime import datetime
 
 app = Flask(__name__)
 
-# ─── CONFIG ──────────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-# ─── PROMPT SMC ──────────────────────────────────────────────
 SMC_SYSTEM_PROMPT = """
 Eres un analista experto en Smart Money Concepts (SMC) especializado en oro (XAUUSD).
 Tu rol es evaluar si un setup detectado automáticamente es válido y de alta probabilidad.
@@ -27,10 +22,9 @@ CONCEPTOS QUE DOMINAS:
 - Order Blocks (OB): zonas institucionales. OB bajista = última vela alcista antes de impulso bajista.
 - BOS: confirmación de continuación rompiendo último swing high/low.
 - CHoCH: primera rotura contraria a la tendencia, señal de reversión.
-- FVG: imbalance entre high de vela -2 y low de vela 0 (o viceversa). El precio tiende a rellenarlo.
+- FVG: imbalance entre high de vela -2 y low de vela 0. El precio tiende a rellenarlo.
 - Liquidity Sweep: barrido de stops para tomar liquidez antes del movimiento institucional real.
 - Premium/Discount: encima del 50% del rango = premium (ideal sells). Debajo = discount (ideal buys).
-- Confluencia HTF/LTF: sesgo H4/H1 debe alinearse con entrada M15/M5.
 
 CRITERIOS DE PUNTUACIÓN (1-10):
 +2 OB fresco (no testeado antes)
@@ -48,22 +42,20 @@ RESTAR PUNTOS O IGNORAR SI:
 - Sin FVG ni liquidity sweep
 - ATR muy bajo (mercado sin momentum)
 
-RESPONDE SOLO EN ESTE JSON EXACTO (sin markdown, sin texto extra):
+RESPONDE SOLO EN ESTE JSON EXACTO sin markdown ni texto extra:
 {
-  "decision": "EJECUTAR" | "ESPERAR" | "IGNORAR",
-  "puntuacion": 1-10,
-  "confianza": "ALTA" | "MEDIA" | "BAJA",
-  "analisis": "2-3 oraciones técnicas explicando el setup",
-  "confluencias": ["factores SMC presentes"],
-  "sl_ajustado": numero,
-  "tp1": numero,
-  "tp2": numero,
-  "zona_precio": "PREMIUM" | "DISCOUNT" | "EQUILIBRIO",
-  "advertencias": "riesgos o condiciones a vigilar"
+  "decision": "EJECUTAR",
+  "puntuacion": 8,
+  "confianza": "ALTA",
+  "analisis": "explicacion del setup",
+  "confluencias": ["factor1", "factor2"],
+  "sl_ajustado": 3028.00,
+  "tp1": 3010.00,
+  "tp2": 3005.00,
+  "zona_precio": "PREMIUM",
+  "advertencias": "riesgos a vigilar"
 }
 """
-
-# ─── FUNCIONES ───────────────────────────────────────────────
 
 def get_session(hour_utc: int) -> str:
     if 7 <= hour_utc < 12:
@@ -88,7 +80,6 @@ def build_prompt(data: dict) -> str:
     liq       = data.get("liq_sweep", False)
     ob_hi     = data.get("ob_hi", 0)
     ob_lo     = data.get("ob_lo", 0)
-
     hora_utc  = datetime.utcnow().hour
     sesion    = get_session(hora_utc)
     sl_dist   = abs(precio - sl)
@@ -96,7 +87,6 @@ def build_prompt(data: dict) -> str:
     rr3       = precio - sl_dist * 3 if tipo == "SELL" else precio + sl_dist * 3
     ob_mid    = (ob_hi + ob_lo) / 2 if ob_hi and ob_lo else precio
     zona      = "PREMIUM" if precio > ob_mid else "DISCOUNT"
-
     cf = []
     if bos:   cf.append("BOS confirmado")
     if choch: cf.append("CHoCH detectado")
@@ -105,88 +95,44 @@ def build_prompt(data: dict) -> str:
 
     return f"""
 SETUP XAUUSD — {tipo} | Timeframe: M{tf}
-Sesión: {sesion} (UTC {hora_utc}:00)
-
-ESTRUCTURA:
-- Tendencia: {tendencia}
-- BOS: {"✓" if bos else "✗"} | CHoCH: {"✓" if choch else "✗"}
-- FVG: {"✓" if fvg else "✗"} | Liq. Sweep: {"✓" if liq else "✗"}
-- Confluencias activas ({len(cf)}): {', '.join(cf) if cf else "ninguna"}
-
-ORDER BLOCK:
-- OB High: {ob_hi} | OB Low: {ob_lo}
-- Precio actual: {precio}
-- Dentro del OB: {"✓ Sí" if ob_lo <= precio <= ob_hi else "✗ No"}
-- Zona: {zona}
-
-RIESGO:
-- SL técnico: {sl} ({sl_dist:.2f} pts = {sl_dist/atr:.1f}x ATR)
-- ATR(14): {atr:.2f}
-- TP 2:1 → {rr2:.2f} | TP 3:1 → {rr3:.2f}
-
-Evalúa y responde en JSON.
+Sesion: {sesion} (UTC {hora_utc}:00)
+Tendencia: {tendencia}
+BOS: {"Si" if bos else "No"} | CHoCH: {"Si" if choch else "No"}
+FVG: {"Si" if fvg else "No"} | Liq. Sweep: {"Si" if liq else "No"}
+Confluencias ({len(cf)}): {', '.join(cf) if cf else "ninguna"}
+OB High: {ob_hi} | OB Low: {ob_lo}
+Precio actual: {precio}
+Dentro del OB: {"Si" if ob_lo <= precio <= ob_hi else "No"}
+Zona: {zona}
+SL tecnico: {sl} ({sl_dist:.2f} pts = {sl_dist/atr:.1f}x ATR)
+ATR(14): {atr:.2f}
+TP 2:1 = {rr2:.2f} | TP 3:1 = {rr3:.2f}
+Evalua y responde SOLO en JSON.
 """
 
 def analyze(data: dict) -> dict:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
-
     payload = {
         "system_instruction": {"parts": [{"text": SMC_SYSTEM_PROMPT}]},
         "contents": [{"parts": [{"text": build_prompt(data)}]}],
-        "generationConfig": {
-            "temperature": 0.2,
-            "maxOutputTokens": 800
-        }
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800}
     }
-
     resp = requests.post(url, json=payload, timeout=30)
     resp.raise_for_status()
-
     candidates = resp.json()["candidates"]
     raw = ""
     for part in candidates[0]["content"]["parts"]:
-    if part.get("text"):
-        raw += part["text"]
-
-# 👇 FUERA del for (importante)
-raw = raw.strip()
-raw = raw.replace("```json", "").replace("```", "").strip()
-
-    # Extraer solo el JSON ignorando texto de pensamiento
+        if part.get("text"):
+            raw += part["text"]
+    raw = raw.strip()
+    raw = raw.replace("```json", "").replace("```", "").strip()
     start = raw.find("{")
-
-if start == -1:
-    raise ValueError(f"No JSON encontrado: {raw[:200]}")
-
-json_str = raw[start:]
-
-# 🔥 Si no cierra, lo cerramos manualmente
-if not json_str.strip().endswith("}"):
-    json_str += "}"
-
-try:
-    return json.loads(json_str)
-except Exception as e:
-    raise ValueError(f"JSON corrupto: {json_str[:200]}")
-
-
+    end = raw.rfind("}") + 1
+    if start == -1 or end == 0:
+        raise ValueError(f"No JSON encontrado: {raw[:200]}")
+    return json.loads(raw[start:end])
 
 def print_result(data: dict, result: dict):
-    """Log visual claro en Render."""
-    
-    tipo = data.get("tipo", "?")
-    precio = data.get("precio", 0)
-    decision = result.get("decision", "?")
-    puntuacion = result.get("puntuacion", "?")
-    confianza = result.get("confianza", "?")
-
-    print("\n📊 RESULTADO IA SMC")
-    print(f"Tipo: {tipo}")
-    print(f"Precio: {precio}")
-    print(f"Decisión: {decision}")
-    print(f"Puntuación: {puntuacion}")
-    print(f"Confianza: {confianza}")
-    """Log visual claro en Render."""
     tipo       = data.get("tipo", "?")
     precio     = data.get("precio", 0)
     decision   = result.get("decision", "?")
@@ -199,46 +145,33 @@ def print_result(data: dict, result: dict):
     tp2        = result.get("tp2", 0)
     zona       = result.get("zona_precio", "?")
     adv        = result.get("advertencias", "")
-
-    emoji = "🔴" if tipo == "SELL" else "🟢"
-    dec_e = "✅" if decision == "EJECUTAR" else "⏳" if decision == "ESPERAR" else "❌"
-
+    emoji = "SELL" if tipo == "SELL" else "BUY"
+    dec_e = "EJECUTAR" if decision == "EJECUTAR" else "ESPERAR" if decision == "ESPERAR" else "IGNORAR"
     print(f"""
-{'='*50}
-{emoji}  SMC GOLD — {tipo} @ {precio}
-{'='*50}
-{dec_e}  DECISIÓN: {decision}
-⭐  Puntuación: {puntuacion}/10  |  Confianza: {confianza}
-📊  Zona: {zona}
-
-💬 {analisis}
-
-🔗 Confluencias:
-{chr(10).join(f"   • {c}" for c in cf) if cf else "   • Ninguna"}
-
-💰 Gestión:
-   SL → {sl}
-   TP1 → {tp1}  |  TP2 → {tp2}
-
-⚠️  {adv}
-{'='*50}
+==================================================
+SMC GOLD — {emoji} @ {precio}
+==================================================
+DECISION: {dec_e}
+Puntuacion: {puntuacion}/10  |  Confianza: {confianza}
+Zona: {zona}
+{analisis}
+Confluencias:
+{chr(10).join(f"  - {c}" for c in cf) if cf else "  - Ninguna"}
+SL: {sl}
+TP1: {tp1}  |  TP2: {tp2}
+Advertencias: {adv}
+==================================================
 """)
-
-# ─── RUTAS ───────────────────────────────────────────────────
 
 @app.route("/signal", methods=["POST"])
 def receive_signal():
     data = request.get_json(force=True)
     if not data:
         return jsonify({"error": "No JSON"}), 400
-
-    print(f"\n📨 Señal recibida: {data.get('tipo','?')} @ {data.get('precio','?')}")
-
+    print(f"Senal recibida: {data.get('tipo','?')} @ {data.get('precio','?')}")
     try:
-        print("🤖 Analizando con Gemini...")
         result = analyze(data)
         print_result(data, result)
-
         return jsonify({
             "status":     "ok",
             "decision":   result.get("decision"),
@@ -246,25 +179,21 @@ def receive_signal():
             "confianza":  result.get("confianza"),
             "zona":       result.get("zona_precio")
         })
-
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({
-        "status":   "✅ corriendo",
-        "modelo":   "gemini-2.5-flash",
-        "gemini":   "configurado" if GEMINI_API_KEY else "❌ FALTA GEMINI_API_KEY",
+        "status": "corriendo",
+        "modelo": "gemini-2.5-flash",
+        "gemini": "configurado" if GEMINI_API_KEY else "FALTA GEMINI_API_KEY",
         "hora_utc": datetime.utcnow().strftime("%H:%M:%S")
     })
 
-
 @app.route("/test", methods=["GET"])
 def test():
-    """Prueba completa sin necesitar TradingView."""
     test_data = {
         "tipo":      "SELL",
         "simbolo":   "XAUUSD",
@@ -285,10 +214,10 @@ def test():
     print_result(test_data, result)
     return jsonify({"test": "ok", "resultado": result})
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"status": "SMC Gold IA corriendo"})
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    print(f"🚀 SMC Gold IA Server")
-    print(f"   Gemini: {'✅ listo' if GEMINI_API_KEY else '❌ FALTA GEMINI_API_KEY'}")
-    print(f"   Puerto: {port}")
     app.run(host="0.0.0.0", port=port, debug=False)
