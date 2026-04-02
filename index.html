@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMC Gold IA</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d1117; color: #e6edf3; font-family: -apple-system, sans-serif; min-height: 100vh; padding: 20px; }
+  h1 { text-align: center; font-size: 20px; color: #f0a500; margin-bottom: 6px; }
+  .sub { text-align: center; font-size: 13px; color: #8b949e; margin-bottom: 24px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  label { font-size: 13px; color: #8b949e; display: block; margin-bottom: 6px; }
+  input { width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; color: #e6edf3; padding: 10px 14px; font-size: 15px; outline: none; }
+  input:focus { border-color: #f0a500; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .toggle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .toggle-btn { padding: 10px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: #8b949e; font-size: 13px; cursor: pointer; text-align: center; transition: all 0.2s; }
+  .toggle-btn.active-yes { border-color: #238636; background: #0f2e1a; color: #3fb950; }
+  .toggle-btn.active-no  { border-color: #30363d; background: #0d1117; color: #8b949e; }
+  .btn-sell { width: 100%; padding: 16px; border-radius: 10px; border: none; font-size: 18px; font-weight: 700; cursor: pointer; background: #da3633; color: white; margin-bottom: 10px; transition: opacity 0.2s; }
+  .btn-buy  { width: 100%; padding: 16px; border-radius: 10px; border: none; font-size: 18px; font-weight: 700; cursor: pointer; background: #238636; color: white; transition: opacity 0.2s; }
+  .btn-sell:hover, .btn-buy:hover { opacity: 0.85; }
+  .btn-sell:disabled, .btn-buy:disabled { opacity: 0.4; cursor: not-allowed; }
+  #resultado { display: none; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-top: 16px; }
+  .res-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .res-decision { font-size: 20px; font-weight: 700; }
+  .res-score { font-size: 13px; color: #8b949e; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-alta  { background: #0f2e1a; color: #3fb950; border: 1px solid #238636; }
+  .badge-media { background: #2d1f00; color: #e3b341; border: 1px solid #9e6a03; }
+  .badge-baja  { background: #2d1215; color: #f85149; border: 1px solid #da3633; }
+  .res-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .res-box { background: #0d1117; border-radius: 8px; padding: 10px; text-align: center; }
+  .res-box-label { font-size: 11px; color: #8b949e; margin-bottom: 4px; }
+  .res-box-val { font-size: 15px; font-weight: 600; }
+  .res-analisis { font-size: 13px; color: #c9d1d9; line-height: 1.6; margin-bottom: 14px; padding: 12px; background: #0d1117; border-radius: 8px; }
+  .cf-list { list-style: none; margin-bottom: 14px; }
+  .cf-list li { font-size: 13px; color: #3fb950; padding: 3px 0; }
+  .cf-list li::before { content: "✓ "; }
+  .adv { font-size: 12px; color: #e3b341; padding: 10px; background: #2d1f00; border-radius: 8px; }
+  .loading { text-align: center; padding: 20px; color: #8b949e; font-size: 14px; display: none; }
+  .error-msg { color: #f85149; font-size: 13px; text-align: center; margin-top: 10px; display: none; }
+  .ejecutar { color: #3fb950; }
+  .esperar  { color: #e3b341; }
+  .ignorar  { color: #f85149; }
+</style>
+</head>
+<body>
+
+<h1>⚡ SMC Gold IA</h1>
+<p class="sub">Análisis inteligente con Gemini</p>
+
+<div class="card">
+  <div class="row">
+    <div>
+      <label>Precio entrada</label>
+      <input type="number" id="precio" placeholder="3020.50" step="0.01">
+    </div>
+    <div>
+      <label>Stop Loss</label>
+      <input type="number" id="sl" placeholder="3028.00" step="0.01">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>ATR (14)</label>
+      <input type="number" id="atr" placeholder="4.20" step="0.01">
+    </div>
+    <div>
+      <label>Temporalidad</label>
+      <input type="number" id="tf" placeholder="5" value="5">
+    </div>
+  </div>
+
+  <label style="margin-bottom:8px">Estructura</label>
+  <div class="toggle-row">
+    <div class="toggle-btn active-yes" onclick="toggle(this,'bos')" data-val="true">BOS ✓</div>
+    <div class="toggle-btn active-yes" onclick="toggle(this,'choch')" data-val="true">CHoCH ✓</div>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle-btn active-yes" onclick="toggle(this,'fvg')" data-val="true">FVG ✓</div>
+    <div class="toggle-btn active-yes" onclick="toggle(this,'liq')" data-val="true">Liq Sweep ✓</div>
+  </div>
+
+  <div class="row" style="margin-top:12px">
+    <div>
+      <label>OB High</label>
+      <input type="number" id="ob_hi" placeholder="3025.00" step="0.01">
+    </div>
+    <div>
+      <label>OB Low</label>
+      <input type="number" id="ob_lo" placeholder="3021.50" step="0.01">
+    </div>
+  </div>
+</div>
+
+<button class="btn-sell" onclick="enviar('SELL')">🔴 SELL</button>
+<button class="btn-buy"  onclick="enviar('BUY')">🟢 BUY</button>
+
+<div class="loading" id="loading">🤖 Analizando con Gemini...</div>
+<div class="error-msg" id="error"></div>
+
+<div id="resultado">
+  <div class="res-header">
+    <div class="res-decision" id="res-decision"></div>
+    <span class="badge" id="res-badge"></span>
+  </div>
+  <div class="res-grid">
+    <div class="res-box">
+      <div class="res-box-label">Puntuación</div>
+      <div class="res-box-val" id="res-score"></div>
+    </div>
+    <div class="res-box">
+      <div class="res-box-label">Zona</div>
+      <div class="res-box-val" id="res-zona"></div>
+    </div>
+    <div class="res-box">
+      <div class="res-box-label">SL ajustado</div>
+      <div class="res-box-val" id="res-sl"></div>
+    </div>
+  </div>
+  <div class="res-grid">
+    <div class="res-box">
+      <div class="res-box-label">TP1</div>
+      <div class="res-box-val" id="res-tp1"></div>
+    </div>
+    <div class="res-box">
+      <div class="res-box-label">TP2</div>
+      <div class="res-box-val" id="res-tp2"></div>
+    </div>
+    <div class="res-box">
+      <div class="res-box-label">Entrada</div>
+      <div class="res-box-val" id="res-entry"></div>
+    </div>
+  </div>
+  <div class="res-analisis" id="res-analisis"></div>
+  <ul class="cf-list" id="res-cf"></ul>
+  <div class="adv" id="res-adv"></div>
+</div>
+
+<script>
+const SERVER = "https://smc-ia-bot-2.onrender.com";
+const flags = { bos: true, choch: true, fvg: true, liq: true };
+
+function toggle(el, key) {
+  flags[key] = !flags[key];
+  if (flags[key]) {
+    el.className = "toggle-btn active-yes";
+    el.textContent = el.textContent.replace("✗", "✓");
+  } else {
+    el.className = "toggle-btn active-no";
+    el.textContent = el.textContent.replace("✓", "✗");
+  }
+}
+
+async function enviar(tipo) {
+  const precio = parseFloat(document.getElementById("precio").value);
+  const sl     = parseFloat(document.getElementById("sl").value);
+  const atr    = parseFloat(document.getElementById("atr").value) || 4.0;
+  const tf     = document.getElementById("tf").value || "5";
+  const ob_hi  = parseFloat(document.getElementById("ob_hi").value) || 0;
+  const ob_lo  = parseFloat(document.getElementById("ob_lo").value) || 0;
+
+  if (!precio || !sl) {
+    mostrarError("Ingresa el precio y el Stop Loss");
+    return;
+  }
+
+  const tendencia = tipo === "SELL" ? -1 : 1;
+  const data = {
+    tipo, precio, sl, atr, tendencia,
+    timeframe: tf,
+    bos:       flags.bos,
+    choch:     flags.choch,
+    fvg:       flags.fvg,
+    liq_sweep: flags.liq,
+    ob_hi, ob_lo
+  };
+
+  document.querySelectorAll("button").forEach(b => b.disabled = true);
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("resultado").style.display = "none";
+  document.getElementById("error").style.display = "none";
+
+  try {
+    const resp = await fetch(`${SERVER}/signal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    const json = await resp.json();
+    if (json.error) throw new Error(json.error);
+    mostrarResultado(json.resultado, precio, tipo);
+  } catch(e) {
+    mostrarError("Error: " + e.message);
+  } finally {
+    document.querySelectorAll("button").forEach(b => b.disabled = false);
+    document.getElementById("loading").style.display = "none";
+  }
+}
+
+function mostrarResultado(r, precio, tipo) {
+  const decision = r.decision || "?";
+  const cls = decision === "EJECUTAR" ? "ejecutar" : decision === "ESPERAR" ? "esperar" : "ignorar";
+  const emoji = decision === "EJECUTAR" ? "✅" : decision === "ESPERAR" ? "⏳" : "❌";
+
+  document.getElementById("res-decision").innerHTML = `<span class="${cls}">${emoji} ${decision}</span>`;
+  
+  const badge = document.getElementById("res-badge");
+  const conf = (r.confianza || "").toUpperCase();
+  badge.textContent = conf;
+  badge.className = `badge badge-${conf === "ALTA" ? "alta" : conf === "MEDIA" ? "media" : "baja"}`;
+
+  document.getElementById("res-score").textContent = `${r.puntuacion || 0}/10`;
+  document.getElementById("res-zona").textContent  = r.zona_precio || "—";
+  document.getElementById("res-sl").textContent    = r.sl_ajustado || "—";
+  document.getElementById("res-tp1").textContent   = r.tp1 || "—";
+  document.getElementById("res-tp2").textContent   = r.tp2 || "—";
+  document.getElementById("res-entry").textContent = precio;
+  document.getElementById("res-analisis").textContent = r.analisis || "";
+
+  const cfList = document.getElementById("res-cf");
+  cfList.innerHTML = "";
+  (r.confluencias || []).forEach(c => {
+    const li = document.createElement("li");
+    li.textContent = c;
+    cfList.appendChild(li);
+  });
+
+  document.getElementById("res-adv").textContent = "⚠️ " + (r.advertencias || "");
+  document.getElementById("resultado").style.display = "block";
+}
+
+function mostrarError(msg) {
+  const el = document.getElementById("error");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+</script>
+</body>
+</html>
