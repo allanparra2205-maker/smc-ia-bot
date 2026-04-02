@@ -126,12 +126,14 @@ def analyze(data: dict) -> dict:
             raw += part["text"]
     raw = raw.strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
-    raw = " ".join(raw.split())
-    start = raw.find("{")
-    end = raw.rfind("}") + 1
-    if start == -1 or end == 0:
-        raise ValueError(f"No JSON encontrado: {raw[:200]}")
-    return json.loads(raw[start:end])
+    try:
+        return json.loads(raw)
+    except Exception:
+        start = raw.find("{")
+        end = raw.rfind("}") + 1
+        if start == -1 or end == 0:
+            raise ValueError(f"No JSON encontrado: {raw[:200]}")
+        return json.loads(raw[start:end])
 
 def print_result(data: dict, result: dict):
     tipo       = data.get("tipo", "?")
