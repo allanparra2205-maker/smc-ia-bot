@@ -12,7 +12,7 @@ SMC_PROMPT = """Eres un analista SMC de oro (XAUUSD). Evalua el setup y responde
 {"decision":"EJECUTAR","puntuacion":8,"confianza":"ALTA","analisis":"texto corto","confluencias":["factor1"],"sl_ajustado":3028.0,"tp1":3010.0,"tp2":3005.0,"zona_precio":"PREMIUM","advertencias":"texto"}"""
 
 def analyze(data: dict) -> dict:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={GEMINI_API_KEY}"
     
     tipo  = data.get("tipo", "?")
     precio= data.get("precio", 0)
