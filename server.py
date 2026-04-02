@@ -126,6 +126,7 @@ def analyze(data: dict) -> dict:
             raw += part["text"]
     raw = raw.strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
+    raw = " ".join(raw.split())
     start = raw.find("{")
     end = raw.rfind("}") + 1
     if start == -1 or end == 0:
