@@ -64,20 +64,26 @@ def get_session():
     else:              return "Asia"
 
 def extract_json(text):
-    # Buscar JSON con "decision" en el texto
+    # Limpiar backticks de markdown
+    text = re.sub(r'```json\s*', '', text)
+    text = re.sub(r'```\s*', '', text)
+    text = text.strip()
+    
+    # Buscar JSON con "decision"
     matches = re.findall(r'\{[^{}]*"decision"[^{}]*\}', text, re.DOTALL)
     if matches:
         for m in reversed(matches):
             try: return json.loads(m)
             except: continue
+    
     # Buscar entre primera { y última }
     s = text.find('{')
     e = text.rfind('}') + 1
     if s != -1 and e > s:
         try: return json.loads(text[s:e])
         except: pass
+    
     raise ValueError(f"No JSON en: {text[:300]}")
-
 def call_gemini(contents):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     payload = {
